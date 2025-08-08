@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>Random Chord Generator</title>
 <style>
     body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
     table { border-collapse: collapse; margin: 20px auto; }
     th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: center; }
     th { background-color: #f0f0f0; }
-    .disabled { opacity: 0.3; pointer-events: none; }
-    button { margin: 5px; padding: 5px 10px; font-size: 14px; }
+    .disabled { opacity: 0.3; }
+    button { margin: 5px; padding: 5px 10px; font-size: 14px; cursor: pointer; }
     #controls { margin-bottom: 20px; }
     #title { font-size: 24px; font-weight: bold; }
     #subtitle { font-size: 12px; color: #666; margin-bottom: 15px; }
@@ -49,7 +49,7 @@ function buildTable() {
     const table = document.getElementById("chordTable");
     table.innerHTML = "";
 
-    // Intestazione con tipi
+    // Header row with chord types
     let headerRow = document.createElement("tr");
     let emptyCell = document.createElement("th");
     headerRow.appendChild(emptyCell);
@@ -63,7 +63,7 @@ function buildTable() {
     });
     table.appendChild(headerRow);
 
-    // Righe con note
+    // Rows for notes
     notes.forEach(note => {
         let row = document.createElement("tr");
         let th = document.createElement("th");
@@ -120,7 +120,7 @@ function updateDisabledCells() {
 function generateChord() {
     const available = Array.from(document.querySelectorAll("#chordTable td")).filter(td => !td.classList.contains("disabled"));
     if (available.length === 0) {
-        document.getElementById("output").textContent = "None";
+        document.getElementById("output").textContent = " ";
         return;
     }
     const randomCell = available[Math.floor(Math.random() * available.length)];
@@ -129,23 +129,30 @@ function generateChord() {
 
 function toggleTimer() {
     const btn = document.getElementById("timerButton");
+    const timerInput = document.getElementById("timerInput");
     if (timer) {
         clearInterval(timer);
         timer = null;
         btn.textContent = "Start timer";
-        document.getElementById("timerInput").value = originalCountdown;
+        timerInput.disabled = false;
+        timerInput.value = originalCountdown;
     } else {
-        originalCountdown = parseInt(document.getElementById("timerInput").value);
+        originalCountdown = parseInt(timerInput.value);
+        if(isNaN(originalCountdown) || originalCountdown < 1) {
+            alert("Please enter a valid timer value of 1 or greater.");
+            return;
+        }
         countdown = originalCountdown;
         generateChord();
         btn.textContent = "Stop timer";
+        timerInput.disabled = true;
         timer = setInterval(() => {
             countdown--;
             if (countdown <= 0) {
                 countdown = originalCountdown;
                 generateChord();
             }
-            document.getElementById("timerInput").value = countdown;
+            timerInput.value = countdown;
         }, 1000);
     }
 }
