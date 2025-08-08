@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Random Chord Generator</title>
+<style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+    table { border-collapse: collapse; margin: 20px auto; }
+    th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: center; }
+    th { background-color: #f0f0f0; }
+    .disabled { opacity: 0.3; pointer-events: none; }
+    button { margin: 5px; padding: 5px 10px; font-size: 14px; }
+    #controls { margin-bottom: 20px; }
+    #title { font-size: 24px; font-weight: bold; }
+    #subtitle { font-size: 12px; color: #666; margin-bottom: 15px; }
+    #output { font-size: 18px; font-weight: bold; display: inline-block; min-width: 100px; text-align: left; }
+    label { font-size: 18px; margin-right: 5px; }
+    input[type="number"] { width: 60px; font-size: 16px; text-align: center; }
+</style>
+</head>
+<body>
+
+<div id="title">Random Chord Generator</div>
+<div id="subtitle">Tool created by Francesco Trotta</div>
+
+<div id="controls">
+    <label>Chord:</label>
+    <span id="output"></span>
+    <button onclick="generateChord()">Generate</button>
+    <br><br>
+    <label>Timer (s):</label>
+    <input type="number" id="timerInput" value="10" min="1">
+    <button id="timerButton" onclick="toggleTimer()">Start timer</button>
+</div>
+
+<table id="chordTable"></table>
+
+<script>
+const notes = ["C", "C#", "Db", "D", "D#", "Eb", "E", "E#", "Fb", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B", "B#", "Cb"];
+const types = ["M", "m", "aug", "dim", "7", "m7", "m7b5", "Maj7", "dim7", "mMaj7", "Maj7#5"];
+
+let disabledNotes = new Set();
+let disabledTypes = new Set();
+let timer = null;
+let countdown = 0;
+let originalCountdown = 0;
+
+function buildTable() {
+    const table = document.getElementById("chordTable");
+    table.innerHTML = "";
+
+    // Intestazione con tipi
+    let headerRow = document.createElement("tr");
+    let emptyCell = document.createElement("th");
+    headerRow.appendChild(emptyCell);
+    types.forEach(type => {
+        let th = document.createElement("th");
+        let btn = document.createElement("button");
+        btn.textContent = type;
+        btn.onclick = () => toggleType(type, btn);
+        th.appendChild(btn);
+        headerRow.appendChild(th);
+    });
+    table.appendChild(headerRow);
+
+    // Righe con note
+    notes.forEach(note => {
+        let row = document.createElement("tr");
+        let th = document.createElement("th");
+        let btn = document.createElement("button");
+        btn.textContent = note;
+        btn.onclick = () => toggleNote(note, btn);
+        th.appendChild(btn);
+        row.appendChild(th);
+
+        types.forEach(type => {
+            let td = document.createElement("td");
+            td.textContent = type === "M" ? note : note + type;
+            td.dataset.note = note;
+            td.dataset.type = type;
+            row.appendChild(td);
+        });
+
+        table.appendChild(row);
+    });
+}
+
+function toggleNote(note, btn) {
+    if (disabledNotes.has(note)) {
+        disabledNotes.delete(note);
+        btn.classList.remove("disabled");
+    } else {
+        disabledNotes.add(note);
+        btn.classList.add("disabled");
+    }
+    updateDisabledCells();
+}
+
+function toggleType(type, btn) {
+    if (disabledTypes.has(type)) {
+        disabledTypes.delete(type);
+        btn.classList.remove("disabled");
+    } else {
+        disabledTypes.add(type);
+        btn.classList.add("disabled");
+    }
+    updateDisabledCells();
+}
+
+function updateDisabledCells() {
+    document.querySelectorAll("#chordTable td").forEach(td => {
+        if (disabledNotes.has(td.dataset.note) || disabledTypes.has(td.dataset.type)) {
+            td.classList.add("disabled");
+        } else {
+            td.classList.remove("disabled");
+        }
+    });
+}
+
+function generateChord() {
+    const available = Array.from(document.querySelectorAll("#chordTable td")).filter(td => !td.classList.contains("disabled"));
+    if (available.length === 0) {
+        document.getElementById("output").textContent = "None";
+        return;
+    }
+    const randomCell = available[Math.floor(Math.random() * available.length)];
+    document.getElementById("output").textContent = randomCell.textContent;
+}
+
+function toggleTimer() {
+    const btn = document.getElementById("timerButton");
+    if (timer) {
+        clearInterval(timer);
+        timer = null;
+        btn.textContent = "Start timer";
+        document.getElementById("timerInput").value = originalCountdown;
+    } else {
+        originalCountdown = parseInt(document.getElementById("timerInput").value);
+        countdown = originalCountdown;
+        generateChord();
+        btn.textContent = "Stop timer";
+        timer = setInterval(() => {
+            countdown--;
+            if (countdown <= 0) {
+                countdown = originalCountdown;
+                generateChord();
+            }
+            document.getElementById("timerInput").value = countdown;
+        }, 1000);
+    }
+}
+
+buildTable();
+</script>
+
+</body>
+</html>
