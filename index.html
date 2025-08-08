@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <title>Random Chord Generator</title>
 <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; position: relative; }
     table { border-collapse: collapse; margin: 20px auto; }
     th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: center; }
     th { background-color: #f0f0f0; }
@@ -16,72 +16,122 @@
     #output { font-size: 18px; font-weight: bold; display: inline-block; min-width: 100px; text-align: left; }
     label { font-size: 18px; margin-right: 5px; }
     input[type="number"] { width: 60px; font-size: 16px; text-align: center; }
+    #langToggle {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-weight: bold;
+        cursor: pointer;
+        background-color: #ddd;
+        border: 1px solid #ccc;
+        padding: 5px 10px;
+        user-select: none;
+    }
 </style>
 </head>
 <body>
+
+<div id="langToggle">LAT</div>
 
 <div id="title">Random Chord Generator</div>
 <div id="subtitle">Tool created by Francesco Trotta</div>
 
 <div id="controls">
-    <label>Chord:</label>
+    <label id="labelChord">Chord:</label>
     <span id="output"></span>
-    <button onclick="generateChord()">Generate</button>
+    <button id="generateBtn">Generate</button>
     <br><br>
-    <label>Timer (s):</label>
+    <label id="labelTimer">Timer (s):</label>
     <input type="number" id="timerInput" value="10" min="1">
-    <button id="timerButton" onclick="toggleTimer()">Start timer</button>
+    <button id="timerButton">Start timer</button>
 </div>
 
 <table id="chordTable"></table>
 
 <script>
-const notes = ["C", "C#", "Db", "D", "D#", "Eb", "E", "E#", "Fb", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B", "B#", "Cb"];
-const types = ["M", "m", "aug", "dim", "7", "m7", "m7b5", "Maj7", "dim7", "mMaj7", "Maj7#5"];
+const english = {
+    title: "Random Chord Generator",
+    subtitle: "Tool created by Francesco Trotta",
+    chordLabel: "Chord:",
+    generate: "Generate",
+    timerLabel: "Timer (s):",
+    startTimer: "Start timer",
+    stopTimer: "Stop timer",
+    langCode: "LAT",
+    notes: ["C", "C#", "Db", "D", "D#", "Eb", "E", "E#", "Fb", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B", "B#", "Cb"],
+    types: ["M", "m", "aug", "dim", "7", "m7", "m7b5", "Maj7", "dim7", "mMaj7", "Maj7#5"]
+};
 
+const latin = {
+    title: "Generatore Casuale di Accordi",
+    subtitle: "Strumento creato da Francesco Trotta",
+    chordLabel: "Accordo:",
+    generate: "Genera",
+    timerLabel: "Timer (s):",
+    startTimer: "Avvia timer",
+    stopTimer: "Ferma timer",
+    langCode: "ENG",
+    notes: ["DO", "DO#", "REb", "RE", "RE#", "MIb", "MI", "MI#", "FAb", "FA", "FA#", "SOLb", "SOL", "SOL#", "LAb", "LA", "LA#", "SIb", "SI", "SI#", "DOb"],
+    types: ["M", "m", "aum", "dim", "7", "m7", "m7b5", "Maj7", "dim7", "mMaj7", "Maj7#5"]
+};
+
+let currentLang = english;
 let disabledNotes = new Set();
 let disabledTypes = new Set();
 let timer = null;
 let countdown = 0;
 let originalCountdown = 0;
 
+const langToggleBtn = document.getElementById("langToggle");
+const titleEl = document.getElementById("title");
+const subtitleEl = document.getElementById("subtitle");
+const labelChord = document.getElementById("labelChord");
+const labelTimer = document.getElementById("labelTimer");
+const generateBtn = document.getElementById("generateBtn");
+const timerButton = document.getElementById("timerButton");
+const timerInput = document.getElementById("timerInput");
+const output = document.getElementById("output");
+const chordTable = document.getElementById("chordTable");
+
 function buildTable() {
-    const table = document.getElementById("chordTable");
-    table.innerHTML = "";
+    chordTable.innerHTML = "";
 
     // Header row with chord types
     let headerRow = document.createElement("tr");
     let emptyCell = document.createElement("th");
     headerRow.appendChild(emptyCell);
-    types.forEach(type => {
+    currentLang.types.forEach(type => {
         let th = document.createElement("th");
         let btn = document.createElement("button");
         btn.textContent = type;
         btn.onclick = () => toggleType(type, btn);
+        if (disabledTypes.has(type)) btn.classList.add("disabled");
         th.appendChild(btn);
         headerRow.appendChild(th);
     });
-    table.appendChild(headerRow);
+    chordTable.appendChild(headerRow);
 
     // Rows for notes
-    notes.forEach(note => {
+    currentLang.notes.forEach(note => {
         let row = document.createElement("tr");
         let th = document.createElement("th");
         let btn = document.createElement("button");
         btn.textContent = note;
         btn.onclick = () => toggleNote(note, btn);
+        if (disabledNotes.has(note)) btn.classList.add("disabled");
         th.appendChild(btn);
         row.appendChild(th);
 
-        types.forEach(type => {
+        currentLang.types.forEach(type => {
             let td = document.createElement("td");
-            td.textContent = type === "M" ? note : note + type;
+            td.textContent = (type === "M" || type === "aum") ? note : note + type;
             td.dataset.note = note;
             td.dataset.type = type;
+            if (disabledNotes.has(note) || disabledTypes.has(type)) td.classList.add("disabled");
             row.appendChild(td);
         });
 
-        table.appendChild(row);
+        chordTable.appendChild(row);
     });
 }
 
@@ -120,31 +170,29 @@ function updateDisabledCells() {
 function generateChord() {
     const available = Array.from(document.querySelectorAll("#chordTable td")).filter(td => !td.classList.contains("disabled"));
     if (available.length === 0) {
-        document.getElementById("output").textContent = " ";
+        output.textContent = " ";
         return;
     }
     const randomCell = available[Math.floor(Math.random() * available.length)];
-    document.getElementById("output").textContent = randomCell.textContent;
+    output.textContent = randomCell.textContent;
 }
 
 function toggleTimer() {
-    const btn = document.getElementById("timerButton");
-    const timerInput = document.getElementById("timerInput");
     if (timer) {
         clearInterval(timer);
         timer = null;
-        btn.textContent = "Start timer";
+        timerButton.textContent = currentLang.startTimer;
         timerInput.disabled = false;
         timerInput.value = originalCountdown;
     } else {
         originalCountdown = parseInt(timerInput.value);
-        if(isNaN(originalCountdown) || originalCountdown < 1) {
-            alert("Please enter a valid timer value of 1 or greater.");
+        if (isNaN(originalCountdown) || originalCountdown < 1) {
+            alert(currentLang.timerLabel + " " + "deve essere un numero intero maggiore di zero.");
             return;
         }
         countdown = originalCountdown;
         generateChord();
-        btn.textContent = "Stop timer";
+        timerButton.textContent = currentLang.stopTimer;
         timerInput.disabled = true;
         timer = setInterval(() => {
             countdown--;
@@ -156,6 +204,34 @@ function toggleTimer() {
         }, 1000);
     }
 }
+
+function toggleLanguage() {
+    if(currentLang === english){
+        currentLang = latin;
+    } else {
+        currentLang = english;
+    }
+    langToggleBtn.textContent = currentLang.langCode;
+    titleEl.textContent = currentLang.title;
+    subtitleEl.textContent = currentLang.subtitle;
+    labelChord.textContent = currentLang.chordLabel;
+    labelTimer.textContent = currentLang.timerLabel;
+    generateBtn.textContent = currentLang.generate;
+    timerButton.textContent = timer ? currentLang.stopTimer : currentLang.startTimer;
+
+    // Clear output if currently empty or just a space
+    if (!output.textContent.trim()) output.textContent = " ";
+
+    disabledNotes.clear();
+    disabledTypes.clear();
+
+    buildTable();
+    output.textContent = " ";
+}
+
+langToggleBtn.onclick = toggleLanguage;
+generateBtn.onclick = generateChord;
+timerButton.onclick = toggleTimer;
 
 buildTable();
 </script>
