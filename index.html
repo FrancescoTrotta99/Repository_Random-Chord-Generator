@@ -1,34 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <title>Random Chord Generator</title>
+
 <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; position: relative; }
-    table { border-collapse: collapse; margin: 20px auto; }
-    th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: center; }
-    th { background-color: #f0f0f0; }
-    .disabled { opacity: 0.3; }
-    button { margin: 5px; padding: 5px 10px; font-size: 14px; cursor: pointer; }
-    #controls { margin-bottom: 20px; }
-    #title { font-size: 24px; font-weight: bold; }
-    #subtitle { font-size: 12px; color: #666; margin-bottom: 15px; }
-    #output { font-size: 18px; font-weight: bold; display: inline-block; min-width: 100px; text-align: left; }
-    label { font-size: 18px; margin-right: 5px; }
-    input[type="number"] { width: 60px; font-size: 16px; text-align: center; }
-    #langToggle {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        font-weight: bold;
-        cursor: pointer;
-        background-color: #ddd;
-        border: 1px solid #ccc;
-        padding: 5px 10px;
-        user-select: none;
-    }
+body { font-family: Arial, sans-serif; text-align: center; margin: 20px; position: relative; }
+table { border-collapse: collapse; margin: 20px auto; }
+th, td { border: 1px solid #ccc; padding: 8px 12px; }
+th { background: #f0f0f0; }
+.disabled { opacity: 0.3; }
+
+button { margin: 5px; padding: 5px 10px; font-size: 14px; cursor: pointer; }
+
+#title { font-size: 24px; font-weight: bold; }
+#subtitle { font-size: 12px; color: #666; margin-bottom: 15px; }
+label { font-size: 18px; }
+#output, #notesOutput { font-size: 18px; font-weight: bold; }
+
+input[type="number"] { width: 60px; font-size: 16px; text-align: center; }
+
+#langToggle {
+  position: absolute; top: 10px; right: 10px;
+  background: #ddd; border: 1px solid #ccc;
+  padding: 5px 10px; cursor: pointer; font-weight: bold;
+}
+
+/* STEP 4 HIGHLIGHT */
+.highlight-row { background-color: #fff59d !important; }
+.highlight-col { background-color: #fff59d !important; }
+.highlight-cell { background-color: #a5d6a7 !important; }
 </style>
 </head>
+
 <body>
 
 <div id="langToggle">LAT</div>
@@ -36,205 +40,224 @@
 <div id="title">Random Chord Generator</div>
 <div id="subtitle">Tool created by Francesco Trotta</div>
 
-<div id="controls">
-    <label id="labelChord">Chord:</label>
-    <span id="output"></span>
-    <button id="generateBtn">Generate</button>
-    <br><br>
-    <label id="labelTimer">Timer (s):</label>
-    <input type="number" id="timerInput" value="10" min="1">
-    <button id="timerButton">Start timer</button>
+<div>
+  <label id="labelChord">Chord:</label>
+  <span id="output"></span>
+  <button id="generateBtn">Generate</button>
+  <br><br>
+
+  <label id="labelNotes">Notes:</label>
+  <span id="notesOutput"></span>
+  <button id="toggleNotesBtn">Hide</button>
+  <br><br>
+
+  <label id="labelTimer">Timer (s):</label>
+  <input type="number" id="timerInput" value="10" min="1">
+  <button id="timerButton">Start timer</button>
 </div>
 
 <table id="chordTable"></table>
 
 <script>
-const english = {
-    title: "Random Chord Generator",
-    subtitle: "Tool created by Francesco Trotta",
-    chordLabel: "Chord:",
-    generate: "Generate",
-    timerLabel: "Timer (s):",
-    startTimer: "Start timer",
-    stopTimer: "Stop timer",
-    langCode: "LAT",
-    notes: ["C", "C#", "Db", "D", "D#", "Eb", "E", "E#", "Fb", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B", "B#", "Cb"],
-    types: ["M", "m", "aug", "dim", "7", "m7", "m7b5", "Maj7", "dim7", "mMaj7", "Maj7#5"]
+/* ================= LANGUAGE ================= */
+
+const ENG = {
+  title: "Random Chord Generator",
+  subtitle: "Tool created by Francesco Trotta",
+  chord: "Chord:",
+  notes: "Notes:",
+  generate: "Generate",
+  timer: "Timer (s):",
+  start: "Start timer",
+  stop: "Stop timer",
+  toggle: "LAT",
+  hide: "Hide",
+  show: "Show"
 };
 
-const latin = {
-    title: "Generatore Casuale di Accordi",
-    subtitle: "Strumento creato da Francesco Trotta",
-    chordLabel: "Accordo:",
-    generate: "Genera",
-    timerLabel: "Timer (s):",
-    startTimer: "Avvia timer",
-    stopTimer: "Ferma timer",
-    langCode: "ENG",
-    notes: ["DO", "DO#", "REb", "RE", "RE#", "MIb", "MI", "MI#", "FAb", "FA", "FA#", "SOLb", "SOL", "SOL#", "LAb", "LA", "LA#", "SIb", "SI", "SI#", "DOb"],
-    types: ["M", "m", "aum", "dim", "7", "m7", "m7b5", "Maj7", "dim7", "mMaj7", "Maj7#5"]
+const LAT = {
+  title: "Generatore Casuale di Accordi",
+  subtitle: "Strumento creato da Francesco Trotta",
+  chord: "Accordo:",
+  notes: "Note:",
+  generate: "Genera",
+  timer: "Timer (s):",
+  start: "Avvia timer",
+  stop: "Ferma timer",
+  toggle: "ENG",
+  hide: "Nascondi",
+  show: "Mostra"
 };
 
-let currentLang = english;
-let disabledNotes = new Set();
-let disabledTypes = new Set();
-let timer = null;
-let countdown = 0;
-let originalCountdown = 0;
+let lang = "ENG";
 
-const langToggleBtn = document.getElementById("langToggle");
-const titleEl = document.getElementById("title");
-const subtitleEl = document.getElementById("subtitle");
-const labelChord = document.getElementById("labelChord");
-const labelTimer = document.getElementById("labelTimer");
-const generateBtn = document.getElementById("generateBtn");
-const timerButton = document.getElementById("timerButton");
-const timerInput = document.getElementById("timerInput");
-const output = document.getElementById("output");
-const chordTable = document.getElementById("chordTable");
+/* ================= THEORY ================= */
 
-function buildTable() {
-    chordTable.innerHTML = "";
+const letters = ["C","D","E","F","G","A","B"];
+const natural = {C:0,D:2,E:4,F:5,G:7,A:9,B:11};
 
-    // Header row with chord types
-    let headerRow = document.createElement("tr");
-    let emptyCell = document.createElement("th");
-    headerRow.appendChild(emptyCell);
-    currentLang.types.forEach(type => {
-        let th = document.createElement("th");
-        let btn = document.createElement("button");
-        btn.textContent = type;
-        btn.onclick = () => toggleType(type, btn);
-        if (disabledTypes.has(type)) btn.classList.add("disabled");
-        th.appendChild(btn);
-        headerRow.appendChild(th);
+const intervals = {
+  M:[0,4,7], m:[0,3,7], aug:[0,4,8], dim:[0,3,6],
+  "7":[0,4,7,10], m7:[0,3,7,10], m7b5:[0,3,6,10],
+  Maj7:[0,4,7,11], dim7:[0,3,6,9],
+  mMaj7:[0,3,7,11], "Maj7#5":[0,4,8,11]
+};
+
+function normalize(d){while(d>6)d-=12;while(d<-6)d+=12;return d;}
+function accidental(d){return d==-2?"bb":d==-1?"b":d==1?"#":d==2?"##":"";}
+
+function buildNote(l,p){
+  return l+accidental(normalize(p-natural[l]));
+}
+
+function chordNotes(root,type){
+  let l=root[0];
+  let p=natural[l]+(root.includes("##")?2:root.includes("#")?1:root.includes("bb")?-2:root.includes("b")?-1:0);
+  let i=letters.indexOf(l);
+  return intervals[type].map((v,n)=>buildNote(letters[(i+n*2)%7],(p+v)%12));
+}
+
+function engNoteToLat(n){
+  const m=n.match(/^([A-G])(.*)$/);
+  return {C:"DO",D:"RE",E:"MI",F:"FA",G:"SOL",A:"LA",B:"SI"}[m[1]]+m[2];
+}
+
+/* ================= STATE ================= */
+
+const notesEng=["C","C#","Db","D","D#","Eb","E","F","F#","Gb","G","G#","Ab","A","A#","Bb","B","B#","Cb"];
+const typesEng=["M","m","aug","dim","7","m7","m7b5","Maj7","dim7","mMaj7","Maj7#5"];
+
+let disabledNotes=new Set(), disabledTypes=new Set();
+let lastRoot=null, lastType=null, lastNotes=[];
+let notesVisible=true;
+
+/* ================= TABLE ================= */
+
+const table=document.getElementById("chordTable");
+
+function buildTable(){
+  table.innerHTML="";
+  let h=document.createElement("tr");h.appendChild(document.createElement("th"));
+  typesEng.forEach(t=>{
+    let th=document.createElement("th"),b=document.createElement("button");
+    b.textContent=lang==="ENG"?t:(t==="aug"?"aum":t);
+    b.onclick=()=>{disabledTypes.has(t)?disabledTypes.delete(t):disabledTypes.add(t);b.classList.toggle("disabled");updateDisabled();};
+    th.appendChild(b);h.appendChild(th);
+  });table.appendChild(h);
+
+  notesEng.forEach(n=>{
+    let r=document.createElement("tr"),th=document.createElement("th"),b=document.createElement("button");
+    b.textContent=lang==="ENG"?n:engNoteToLat(n);
+    b.onclick=()=>{disabledNotes.has(n)?disabledNotes.delete(n):disabledNotes.add(n);b.classList.toggle("disabled");updateDisabled();};
+    th.appendChild(b);r.appendChild(th);
+
+    typesEng.forEach(t=>{
+      let td=document.createElement("td");
+      td.dataset.root=n;td.dataset.type=t;
+      td.textContent=lang==="ENG"?n+(t==="M"?"":t):engNoteToLat(n)+(t==="M"?"":(t==="aug"?"aum":t));
+      r.appendChild(td);
     });
-    chordTable.appendChild(headerRow);
-
-    // Rows for notes
-    currentLang.notes.forEach(note => {
-        let row = document.createElement("tr");
-        let th = document.createElement("th");
-        let btn = document.createElement("button");
-        btn.textContent = note;
-        btn.onclick = () => toggleNote(note, btn);
-        if (disabledNotes.has(note)) btn.classList.add("disabled");
-        th.appendChild(btn);
-        row.appendChild(th);
-
-        currentLang.types.forEach(type => {
-            let td = document.createElement("td");
-            td.textContent = (type === "M" || type === "aum") ? note : note + type;
-            td.dataset.note = note;
-            td.dataset.type = type;
-            if (disabledNotes.has(note) || disabledTypes.has(type)) td.classList.add("disabled");
-            row.appendChild(td);
-        });
-
-        chordTable.appendChild(row);
-    });
+    table.appendChild(r);
+  });
 }
 
-function toggleNote(note, btn) {
-    if (disabledNotes.has(note)) {
-        disabledNotes.delete(note);
-        btn.classList.remove("disabled");
-    } else {
-        disabledNotes.add(note);
-        btn.classList.add("disabled");
-    }
-    updateDisabledCells();
+function updateDisabled(){
+  document.querySelectorAll("td").forEach(td=>{
+    td.classList.toggle("disabled",disabledNotes.has(td.dataset.root)||disabledTypes.has(td.dataset.type));
+  });
 }
 
-function toggleType(type, btn) {
-    if (disabledTypes.has(type)) {
-        disabledTypes.delete(type);
-        btn.classList.remove("disabled");
-    } else {
-        disabledTypes.add(type);
-        btn.classList.add("disabled");
-    }
-    updateDisabledCells();
+/* ================= HIGHLIGHT ================= */
+
+function clearHighlight(){
+  document.querySelectorAll(".highlight-row,.highlight-col,.highlight-cell")
+    .forEach(el=>el.classList.remove("highlight-row","highlight-col","highlight-cell"));
 }
 
-function updateDisabledCells() {
-    document.querySelectorAll("#chordTable td").forEach(td => {
-        if (disabledNotes.has(td.dataset.note) || disabledTypes.has(td.dataset.type)) {
-            td.classList.add("disabled");
-        } else {
-            td.classList.remove("disabled");
-        }
-    });
+function highlightTable(){
+  if(!lastRoot||!lastType)return;
+  clearHighlight();
+
+  document.querySelectorAll(`td[data-root="${lastRoot}"]`).forEach(td=>td.classList.add("highlight-row"));
+  document.querySelectorAll(`td[data-type="${lastType}"]`).forEach(td=>td.classList.add("highlight-col"));
+
+  const cell=document.querySelector(`td[data-root="${lastRoot}"][data-type="${lastType}"]`);
+  if(cell)cell.classList.add("highlight-cell");
 }
 
-function generateChord() {
-    const available = Array.from(document.querySelectorAll("#chordTable td")).filter(td => !td.classList.contains("disabled"));
-    if (available.length === 0) {
-        output.textContent = " ";
-        return;
-    }
-    const randomCell = available[Math.floor(Math.random() * available.length)];
-    output.textContent = randomCell.textContent;
+/* ================= GENERATE ================= */
+
+function renderChord(){
+  document.getElementById("output").textContent=
+    lang==="ENG"?lastRoot+(lastType==="M"?"":lastType):
+    engNoteToLat(lastRoot)+(lastType==="M"?"":(lastType==="aug"?"aum":lastType));
+
+  let n=lang==="ENG"?lastNotes:lastNotes.map(engNoteToLat);
+  document.getElementById("notesOutput").textContent=notesVisible?n.join(" "):"";
+  highlightTable();
 }
 
-function toggleTimer() {
-    if (timer) {
-        clearInterval(timer);
-        timer = null;
-        timerButton.textContent = currentLang.startTimer;
-        timerInput.disabled = false;
-        timerInput.value = originalCountdown;
-    } else {
-        originalCountdown = parseInt(timerInput.value);
-        if (isNaN(originalCountdown) || originalCountdown < 1) {
-            alert(currentLang.timerLabel + " " + "deve essere un numero intero maggiore di zero.");
-            return;
-        }
-        countdown = originalCountdown;
-        generateChord();
-        timerButton.textContent = currentLang.stopTimer;
-        timerInput.disabled = true;
-        timer = setInterval(() => {
-            countdown--;
-            if (countdown <= 0) {
-                countdown = originalCountdown;
-                generateChord();
-            }
-            timerInput.value = countdown;
-        }, 1000);
-    }
+function generateChord(){
+  const cells=[...document.querySelectorAll("td")].filter(td=>!td.classList.contains("disabled"));
+  if(!cells.length)return;
+  const c=cells[Math.floor(Math.random()*cells.length)];
+  lastRoot=c.dataset.root;lastType=c.dataset.type;
+  lastNotes=chordNotes(lastRoot,lastType);
+
+  if(timer){countdown=original;timerInput.value=countdown;}
+  renderChord();
 }
 
-function toggleLanguage() {
-    if(currentLang === english){
-        currentLang = latin;
-    } else {
-        currentLang = english;
-    }
-    langToggleBtn.textContent = currentLang.langCode;
-    titleEl.textContent = currentLang.title;
-    subtitleEl.textContent = currentLang.subtitle;
-    labelChord.textContent = currentLang.chordLabel;
-    labelTimer.textContent = currentLang.timerLabel;
-    generateBtn.textContent = currentLang.generate;
-    timerButton.textContent = timer ? currentLang.stopTimer : currentLang.startTimer;
+/* ================= TIMER ================= */
 
-    // Clear output if currently empty or just a space
-    if (!output.textContent.trim()) output.textContent = " ";
+let timer=null,countdown=0,original=0;
+const timerInput=document.getElementById("timerInput");
+const timerButton=document.getElementById("timerButton");
 
-    disabledNotes.clear();
-    disabledTypes.clear();
-
-    buildTable();
-    output.textContent = " ";
+function toggleTimer(){
+  if(timer){
+    clearInterval(timer);timer=null;
+    timerButton.textContent=lang==="ENG"?ENG.start:LAT.start;
+    timerInput.disabled=false;timerInput.value=original;
+  }else{
+    original=parseInt(timerInput.value);countdown=original;
+    generateChord();
+    timerButton.textContent=lang==="ENG"?ENG.stop:LAT.stop;
+    timerInput.disabled=true;
+    timer=setInterval(()=>{
+      countdown--;if(countdown<=0){countdown=original;generateChord();}
+      timerInput.value=countdown;
+    },1000);
+  }
 }
 
-langToggleBtn.onclick = toggleLanguage;
-generateBtn.onclick = generateChord;
-timerButton.onclick = toggleTimer;
+/* ================= NOTES TOGGLE ================= */
+
+document.getElementById("toggleNotesBtn").onclick=()=>{
+  notesVisible=!notesVisible;
+  document.getElementById("toggleNotesBtn").textContent=
+    notesVisible?(lang==="ENG"?ENG.hide:LAT.hide):(lang==="ENG"?ENG.show:LAT.show);
+  renderChord();
+};
+
+/* ================= LANGUAGE ================= */
+
+document.getElementById("langToggle").onclick=()=>{
+  lang=lang==="ENG"?"LAT":"ENG";
+  const L=lang==="ENG"?ENG:LAT;
+  langToggle.textContent=L.toggle;
+  title.textContent=L.title;subtitle.textContent=L.subtitle;
+  labelChord.textContent=L.chord;labelNotes.textContent=L.notes;
+  labelTimer.textContent=L.timer;generateBtn.textContent=L.generate;
+  toggleNotesBtn.textContent=notesVisible?L.hide:L.show;
+  timerButton.textContent=timer?L.stop:L.start;
+  buildTable();renderChord();
+};
+
+generateBtn.onclick=generateChord;
+timerButton.onclick=toggleTimer;
 
 buildTable();
 </script>
-
 </body>
 </html>
